@@ -1,4 +1,4 @@
-package org.example;
+package ua.bonfiremc.slc;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.logging.LogUtils;
@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
-public class langchanger implements ModInitializer {
+public class LangChanger implements ModInitializer {
     private static final Component LOC_TEST = Component.translatable("test");
     private static final Component LANGCHANGER_START = Component.translatable("message.langchanger.start");
     private static final Component LANG_SETTING_SUCCESS = Component.translatable("message.langchanger.lang_setting.success");
@@ -39,15 +39,15 @@ public class langchanger implements ModInitializer {
                             LOGGER.info("Error: Unknown langiage - \"" + langCode + "\".");
                             return 0;
                         }
-                        if (langCode.equals(langmanager.getCurrentLanguage())) {
+                        if (langCode.equals(LangManager.getCurrentLanguage())) {
                             LOGGER.info("Um. You are literally already in this language dude :|");
                             return 0;
                         }
                         LOGGER.info("Language setting: \"" + langCode + "\"...");
                         CompletableFuture.runAsync(() -> {
                             try {
-                                langmanager.setCurrentLanguage(langCode);
-                                Language newLang = langmanager.loadAndCreateLanguage(langCode);
+                                LangManager.setCurrentLanguage(langCode);
+                                Language newLang = LangManager.loadAndCreateLanguage(langCode);
                                 Language.inject(newLang);
                                 context.getSource().sendSuccess(() -> Component.literal("Language successfully switched to: \"" + langCode + "\"!"), true);
                             } catch (Exception e) {

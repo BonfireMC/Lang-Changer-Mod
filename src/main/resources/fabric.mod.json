@@ -1,32 +1,27 @@
 {
-  "schemaVersion": 1,
-  "id": "langchanger",
-  "version": "${version}",
-  "name": "Lang Changer",
-  "description": "sasi",
-  "authors": [],
-  "contact": {},
-  "license": "All-Rights-Reserved",
-  "icon": "assets/langchanger/icon.png",
-  "environment": "server",
-  "entrypoints": {
-    "fabric-datagen": [
-      "org.example.client.langchangerDataGenerator"
+    "schemaVersion": 1,
+    "id": "slc",
+    "version": "${version}",
+    "name": "Server Language Changer",
+    "description": "sasi",
+    "authors": [
+        "Bonfire Studios"
     ],
-    "main": [
-      "org.example.langchanger"
-    ]
-  },
-  "mixins": [
-    "langchanger.mixins.json",
-    {
-      "config": "langchanger.client.mixins.json",
-      "environment": "client"
+    "contact": {},
+    "license": "LGPL-3.0",
+    "icon": "assets/slc/icon.png",
+    "environment": "server",
+    "entrypoints": {
+        "main": [
+            "ua.bonfiremc.slc.LangChanger"
+        ]
+    },
+    "mixins": [
+        "langchanger.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": "*",
+        "fabric-api": "*",
+        "minecraft": "${minecraft_version}"
     }
-  ],
-  "depends": {
-    "fabricloader": ">=${loader_version}",
-    "fabric-api": "*",
-    "minecraft": "${minecraft_version}"
-  }
 }

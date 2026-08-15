@@ -1,11 +1,10 @@
-package org.example;
+package ua.bonfiremc.slc;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.locale.Language;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
@@ -26,7 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class langmanager {
+public class LangManager {
     private static final Path DIR = Paths.get("serverlanguages");
     public static final Path CURRENTFILE = DIR.resolve("currentlang.txt");
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -57,7 +56,7 @@ public class langmanager {
                 Language.loadFromJson(is, translations::put);
             }
         } catch (Exception e) {
-            langchanger.LOGGER.info("Cannot load english (usa).");
+            LangChanger.LOGGER.info("Cannot load english (usa).");
         }
 
         if (!langCode.equals("en_us")) {
@@ -66,14 +65,14 @@ public class langmanager {
                 String remoteHash = fetchRemoteHash(langCode);
 
                 if (!Files.exists(langFile) || !calculateSHA1(langFile).equals(remoteHash)) {
-                    langchanger.LOGGER.info("Uploading lang file of \"" + langCode + "\"...");
+                    LangChanger.LOGGER.info("Uploading lang file of \"" + langCode + "\"...");
                     downloadAsset(remoteHash, langFile);
                 }
                 try (InputStream is = Files.newInputStream(langFile)) {
                     Language.loadFromJson(is, translations::put);
                 }
             } catch (Exception e) {
-                langchanger.LOGGER.info("Cannot load \"" + langCode + "\". English (usa) is still in charge.");
+                LangChanger.LOGGER.info("Cannot load \"" + langCode + "\". English (usa) is still in charge.");
                 e.printStackTrace();
             }
         }
