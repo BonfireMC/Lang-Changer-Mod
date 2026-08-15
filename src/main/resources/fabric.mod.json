@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "langchanger",
+  "version": "${version}",
+  "name": "Lang Changer",
+  "description": "sasi",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/langchanger/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-datagen": [
+      "org.example.client.langchangerDataGenerator"
+    ],
+    "main": [
+      "org.example.langchanger"
+    ]
+  },
+  "mixins": [
+    "langchanger.mixins.json",
+    {
+      "config": "langchanger.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}

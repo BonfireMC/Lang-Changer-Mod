@@ -1,0 +1,9 @@
+{
+  "test": "testing",
+  "message.langchanger.start": "Mod initialized",
+  "message.langchanger.lang_setting.load": "Language setting: \"",
+  "message.langchanger.lang_setting.success": "Language successfully switched to: \"%s\"",
+  "message.langchanger.lang_setting.unknown_language": "Error: \"%s\" is an unknown language!",
+  "message.langchanger.r": "f",
+  "message.langchanger.t": "f"
+}
