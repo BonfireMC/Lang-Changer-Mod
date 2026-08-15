@@ -24,11 +24,60 @@ import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class LangManager {
+public class LanguageLoader {
+    @SuppressWarnings("OptionalGetWithoutIsPresent")
+    private static final String MINECRAFT_VERSION = FabricLoader.getInstance().getModContainer("minecraft").get().getMetadata().getVersion().getFriendlyString();
+    private static final Pattern LOCALE_REGEX = Pattern.compile("^assets/minecraft/lang/([^/]+)\\.json$");
+
     private static final Path DIR = Paths.get("serverlanguages");
     public static final Path CURRENTFILE = DIR.resolve("currentlang.txt");
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+
+    public static final Map<String, String> LOCALE_TO_HASH = new HashMap<>();
+
+    public static void fetchLocales() {
+        String manifestString = fetchString("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
+        JsonObject manifest = JsonParser.parseString(manifestString).getAsJsonObject();
+
+        String versionDataUrl = null;
+
+        for (JsonElement el : manifest.getAsJsonArray("versions")) {
+            JsonObject version = el.getAsJsonObject();
+
+            if (version.get("id").getAsString().equals(MINECRAFT_VERSION)) {
+                versionDataUrl = version.get("url").getAsString();
+                break;
+            }
+        }
+        if (versionDataUrl == null) throw new RuntimeException(MINECRAFT_VERSION + " version is not found");
+
+        String versionDataString = fetchString(versionDataUrl);
+        String assetIndexUrl = JsonParser.parseString(versionDataString).getAsJsonObject()
+            .getAsJsonObject("assetIndex")
+            .get("url")
+            .getAsString();
+
+        String assetIndexString = fetchString(assetIndexUrl);
+        JsonObject objects = JsonParser.parseString(assetIndexString).getAsJsonObject()
+            .getAsJsonObject("objects");
+
+        for (Map.Entry<String, JsonElement> entry : objects.entrySet()) {
+            Matcher matcher = LOCALE_REGEX.matcher(entry.getKey());
+
+            if (matcher.matches()) {
+                String locale = matcher.group(1);
+                String hash = entry.getValue()
+                    .getAsJsonObject()
+                    .get("hash")
+                    .getAsString();
+
+                LOCALE_TO_HASH.put(locale, hash);
+            }
+        }
+    }
 
     public static String getCurrentLanguage() {
         try {
@@ -56,7 +105,7 @@ public class LangManager {
                 Language.loadFromJson(is, translations::put);
             }
         } catch (Exception e) {
-            LangChanger.LOGGER.info("Cannot load english (usa).");
+            SLCInitializer.LOGGER.info("Cannot load english (usa).");
         }
 
         if (!langCode.equals("en_us")) {
@@ -65,14 +114,14 @@ public class LangManager {
                 String remoteHash = fetchRemoteHash(langCode);
 
                 if (!Files.exists(langFile) || !calculateSHA1(langFile).equals(remoteHash)) {
-                    LangChanger.LOGGER.info("Uploading lang file of \"" + langCode + "\"...");
+                    SLCInitializer.LOGGER.info("Uploading lang file of \"" + langCode + "\"...");
                     downloadAsset(remoteHash, langFile);
                 }
                 try (InputStream is = Files.newInputStream(langFile)) {
                     Language.loadFromJson(is, translations::put);
                 }
             } catch (Exception e) {
-                LangChanger.LOGGER.info("Cannot load \"" + langCode + "\". English (usa) is still in charge.");
+                SLCInitializer.LOGGER.info("Cannot load \"" + langCode + "\". English (usa) is still in charge.");
                 e.printStackTrace();
             }
         }
@@ -138,9 +187,15 @@ public class LangManager {
         if (response.statusCode() != 200) throw new RuntimeException("File loading error: HTTP " + response.statusCode());
     }
 
-    private static String fetchString(String url) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
-        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString()).body();
+    private static String fetchString(String url) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+            return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString()).body();
+        } catch (Exception e) {
+            //noinspection StringConcatenationArgumentToLogCall
+            SLCInitializer.LOGGER.error("Failed to fetch string from '" + url + "'", e);
+            return "";
+        }
     }
 
     private static String calculateSHA1(Path file) throws Exception {

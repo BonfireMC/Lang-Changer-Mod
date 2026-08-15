@@ -1,9 +1,6 @@
 {
-  "test": "testing",
-  "message.langchanger.start": "Mod initialized",
-  "message.langchanger.lang_setting.load": "Language setting: \"",
-  "message.langchanger.lang_setting.success": "Language successfully switched to: \"%s\"",
-  "message.langchanger.lang_setting.unknown_language": "Error: \"%s\" is an unknown language!",
-  "message.langchanger.r": "f",
-  "message.langchanger.t": "f"
+    "commands.slc.setting": "Setting locale '%s'",
+    "commands.slc.failed.unknown": "Unknown locale '%s'",
+    "commands.slc.failed.already_set": "Um. You are literally already using this locale dude :|",
+    "commands.slc.failed.exception": "Failed to set locale. Check console for details"
 }

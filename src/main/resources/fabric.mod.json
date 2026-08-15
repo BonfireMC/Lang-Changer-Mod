@@ -3,7 +3,7 @@
     "id": "slc",
     "version": "${version}",
     "name": "Server Language Changer",
-    "description": "sasi",
+    "description": "Server language changer, does that really need any explanation?",
     "authors": [
         "Bonfire Studios"
     ],
@@ -13,11 +13,11 @@
     "environment": "server",
     "entrypoints": {
         "main": [
-            "ua.bonfiremc.slc.LangChanger"
+            "ua.bonfiremc.slc.SLCInitializer"
         ]
     },
     "mixins": [
-        "langchanger.mixins.json"
+        "slc.mixins.json"
     ],
     "depends": {
         "fabricloader": "*",
