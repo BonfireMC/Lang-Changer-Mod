@@ -13,7 +13,7 @@
     "environment": "server",
     "entrypoints": {
         "main": [
-            "ua.bonfiremc.slc.SLCInitializer"
+            "ua.bonfiremc.slc.SLC"
         ]
     },
     "mixins": [
