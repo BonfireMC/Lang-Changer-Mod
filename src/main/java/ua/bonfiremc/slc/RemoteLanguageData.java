@@ -20,7 +20,7 @@ public class RemoteLanguageData {
         this.key = key;
         this.hash = hash;
 
-        this.path = LanguageLoader.DIR.resolve(this.key + ".json");
+        this.path = LanguageLoader.LANGUAGES_DIR.resolve(this.key + ".json");
     }
 
     public void downloadAndWrite() {

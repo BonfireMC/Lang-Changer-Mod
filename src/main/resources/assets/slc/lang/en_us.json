@@ -1,5 +1,6 @@
 {
     "commands.slc.setting": "Setting language '%s'",
+    "commands.slc.success": "Language successfully switched to: '%s'!",
     "commands.slc.failed.unknown": "Unknown language '%s'",
     "commands.slc.failed.already_set": "Um. You are literally already using this language dude :|",
     "commands.slc.failed.exception": "Failed to set language. Check console for details"

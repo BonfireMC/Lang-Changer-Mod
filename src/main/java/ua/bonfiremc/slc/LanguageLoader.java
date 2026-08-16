@@ -24,8 +24,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LanguageLoader {
-    public static final Path DIR = Paths.get("server_languages");
-    public static final Path CURRENT_FILE = DIR.resolve("_current.txt");
+    public static final Path LANGUAGES_DIR = Paths.get("server_languages");
+    public static final Path CURRENT_FILE = LANGUAGES_DIR.resolve("_current.txt");
 
     public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -35,14 +35,14 @@ public class LanguageLoader {
 
     public static final LanguageLoader INSTANCE = new LanguageLoader();
 
-    public final List<RemoteLanguageData> availableLanguages;
+    public final List<RemoteLanguageData> remoteLanguages;
     private String currentLanguage = Language.DEFAULT;
 
     private LanguageLoader() {
-        this.availableLanguages = fetchLanguages();
+        this.remoteLanguages = fetchLanguages();
 
         try {
-            if (!Files.exists(DIR)) Files.createDirectories(DIR);
+            if (!Files.exists(LANGUAGES_DIR)) Files.createDirectories(LANGUAGES_DIR);
             if (!Files.exists(CURRENT_FILE)) {
                 Files.writeString(CURRENT_FILE, Language.DEFAULT);
             } else {
@@ -56,9 +56,9 @@ public class LanguageLoader {
     public void inject(String language) {
         this.currentLanguage = language;
 
-        this.writeToFile(language);
-
         Language.inject(this.createLanguage());
+
+        this.updateFile();
     }
 
     public SLCLanguage createLanguage() {
@@ -66,7 +66,7 @@ public class LanguageLoader {
 
         languages.add(Language.DEFAULT);
 
-        if (!this.currentLanguage.equals("en_us")) {
+        if (!this.currentLanguage.equals(Language.DEFAULT)) {
             languages.add(this.currentLanguage);
         }
 
@@ -79,15 +79,6 @@ public class LanguageLoader {
         return new SLCLanguage(Map.copyOf(translations));
     }
 
-    public RemoteLanguageData findRemoteLanguage(String lang) {
-        for (RemoteLanguageData language : this.availableLanguages) {
-            if (language.key.equals(lang)) {
-                return language;
-            }
-        }
-        return null;
-    }
-
     public Map<String, String> getTranslations(String language) {
         List<Path> paths = new ArrayList<>();
 
@@ -98,7 +89,7 @@ public class LanguageLoader {
                     .orElseThrow()
             );
         } else {
-            RemoteLanguageData remote = this.findRemoteLanguage(language);
+            RemoteLanguageData remote = this.findRemoteData(language);
 
             if (remote == null) {
                 throw new RuntimeException();
@@ -140,13 +131,22 @@ public class LanguageLoader {
         return Map.copyOf(translations);
     }
 
+    public RemoteLanguageData findRemoteData(String lang) {
+        for (RemoteLanguageData language : this.remoteLanguages) {
+            if (language.key.equals(lang)) {
+                return language;
+            }
+        }
+        return null;
+    }
+
     public String getCurrentLanguage() {
         return this.currentLanguage;
     }
 
-    private void writeToFile(String content) {
+    private void updateFile() {
         try {
-            Files.writeString(CURRENT_FILE, content);
+            Files.writeString(CURRENT_FILE, this.currentLanguage);
         } catch (IOException e) {
             SLC.LOGGER.error("Failed to write current language to file", e);
         }

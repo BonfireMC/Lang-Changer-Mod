@@ -5,6 +5,7 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.logging.LogUtils;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 
@@ -20,23 +21,15 @@ public class SLC implements ModInitializer {
         Component.translatableEscape("commands.slc.failed.unknown", object)
     );
 
-    public static String normalizeLang(String language) {
-        if (language.equals("ru_ru") || language.equals("rpr")) {
-            return "uk_ua";
-        } else {
-            return language;
-        }
-    }
-
     @Override
     public void onInitialize() {
         CommandRegistrationCallback.EVENT.register((dispatcher, _, _) -> {
             dispatcher.register(literal("slc")
                 .then(argument("language", StringArgumentType.word())
                     .suggests((_, builder) -> {
-                        builder.suggest("en_us");
+                        builder.suggest(Language.DEFAULT);
 
-                        for (RemoteLanguageData language : LanguageLoader.INSTANCE.availableLanguages) {
+                        for (RemoteLanguageData language : LanguageLoader.INSTANCE.remoteLanguages) {
                             builder.suggest(language.key);
                         }
 
@@ -51,9 +44,9 @@ public class SLC implements ModInitializer {
                             return 0;
                         }
 
-                        RemoteLanguageData language = LanguageLoader.INSTANCE.findRemoteLanguage(languageKey);
+                        RemoteLanguageData remote = LanguageLoader.INSTANCE.findRemoteData(languageKey);
 
-                        if (language == null && !languageKey.equals("en_us")) {
+                        if (remote == null && !languageKey.equals(Language.DEFAULT)) {
                             throw ERROR_UNKNOWN_LANGUAGE.create(languageKey);
                         }
 
@@ -63,7 +56,7 @@ public class SLC implements ModInitializer {
                             try {
                                 LanguageLoader.INSTANCE.inject(languageKey);
 
-                                context.getSource().sendSuccess(() -> Component.literal("Language successfully switched to: \"" + languageKey + "\"!"), true);
+                                context.getSource().sendSuccess(() -> Component.translatable("commands.slc.success", languageKey), true);
                             } catch (Exception e) {
                                 LOGGER.error("Failed to set language", e);
 
@@ -75,5 +68,13 @@ public class SLC implements ModInitializer {
                 )
             );
         });
+    }
+
+    public static String normalizeLang(String language) {
+        if (language.equals("ru_ru") || language.equals("rpr")) {
+            return "uk_ua";
+        } else {
+            return language;
+        }
     }
 }
