@@ -27,7 +27,6 @@ public class SLCLanguage extends Language {
         return this.storage.containsKey(elementId);
     }
 
-
     public boolean isDefaultRightToLeft() {
         return false;
     }
