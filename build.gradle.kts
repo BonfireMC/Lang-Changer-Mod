@@ -7,6 +7,10 @@ val modVersion: String = project.property("modVersion")!! as String
 version = "$modVersion+${libs.versions.minecraft.get()}"
 group = "ua.bonfiremc"
 
+base {
+    archivesName = "slc"
+}
+
 repositories {
     maven("https://maven.nucleoid.xyz/")
 }
