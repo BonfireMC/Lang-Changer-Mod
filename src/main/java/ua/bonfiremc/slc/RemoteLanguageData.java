@@ -10,20 +10,20 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class ServerLanguage {
+public class RemoteLanguageData {
     public final String key;
     public final String hash;
 
     public final Path path;
 
-    public ServerLanguage(String key, String hash) {
+    public RemoteLanguageData(String key, String hash) {
         this.key = key;
         this.hash = hash;
 
         this.path = LanguageLoader.DIR.resolve(this.key + ".json");
     }
 
-    public void download() {
+    public void downloadAndWrite() {
         String subHash = this.hash.substring(0, 2);
         String url = "https://resources.download.minecraft.net/" + subHash + "/" + hash;
 
@@ -42,7 +42,7 @@ public class ServerLanguage {
         }
     }
 
-    public String calculateSHA1() {
+    public String calculateDownloadedSHA1() {
         MessageDigest digest;
 
         try {

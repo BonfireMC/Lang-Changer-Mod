@@ -36,7 +36,7 @@ public class SLC implements ModInitializer {
                     .suggests((_, builder) -> {
                         builder.suggest("en_us");
 
-                        for (ServerLanguage language : LanguageLoader.INSTANCE.availableLanguages) {
+                        for (RemoteLanguageData language : LanguageLoader.INSTANCE.availableLanguages) {
                             builder.suggest(language.key);
                         }
 
@@ -44,14 +44,14 @@ public class SLC implements ModInitializer {
                     })
                     .executes(context -> {
                         String languageKey = normalizeLang(StringArgumentType.getString(context, "language").toLowerCase());
-                        ServerLanguage currentLanguage = LanguageLoader.INSTANCE.getCurrentLanguage();
+                        String currentLanguage = LanguageLoader.INSTANCE.getCurrentLanguage();
 
-                        if (languageKey.equals(currentLanguage == null ? "en_us" : currentLanguage.key)) {
+                        if (languageKey.equals(currentLanguage)) {
                             context.getSource().sendFailure(Component.translatable("commands.slc.failed.already_set"));
                             return 0;
                         }
 
-                        ServerLanguage language = LanguageLoader.INSTANCE.findLanguage(languageKey);
+                        RemoteLanguageData language = LanguageLoader.INSTANCE.findRemoteLanguage(languageKey);
 
                         if (language == null && !languageKey.equals("en_us")) {
                             throw ERROR_UNKNOWN_LANGUAGE.create(languageKey);
@@ -61,7 +61,7 @@ public class SLC implements ModInitializer {
 
                         CompletableFuture.runAsync(() -> {
                             try {
-                                LanguageLoader.INSTANCE.inject(language);
+                                LanguageLoader.INSTANCE.inject(languageKey);
 
                                 context.getSource().sendSuccess(() -> Component.literal("Language successfully switched to: \"" + languageKey + "\"!"), true);
                             } catch (Exception e) {

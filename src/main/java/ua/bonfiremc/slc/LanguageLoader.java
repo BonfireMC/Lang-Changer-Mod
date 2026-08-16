@@ -3,18 +3,12 @@ package ua.bonfiremc.slc;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.fabricmc.fabric.impl.resource.ServerLanguageUtil;
 import net.fabricmc.fabric.impl.resource.pack.ModNioPackResources;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.locale.DeprecatedTranslationsInfo;
 import net.minecraft.locale.Language;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.Style;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.util.StringDecomposer;
-import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,11 +33,10 @@ public class LanguageLoader {
     private static final ModContainer MINECRAFT_CONTAINER = FabricLoader.getInstance().getModContainer("minecraft").get();
     private static final Pattern LANGUAGE_REGEX = Pattern.compile("^minecraft/lang/([^/]+)\\.json$");
 
-    public final List<ServerLanguage> availableLanguages;
-
-    private ServerLanguage currentLanguage = null;
-
     public static final LanguageLoader INSTANCE = new LanguageLoader();
+
+    public final List<RemoteLanguageData> availableLanguages;
+    private String currentLanguage = Language.DEFAULT;
 
     private LanguageLoader() {
         this.availableLanguages = fetchLanguages();
@@ -51,57 +44,43 @@ public class LanguageLoader {
         try {
             if (!Files.exists(DIR)) Files.createDirectories(DIR);
             if (!Files.exists(CURRENT_FILE)) {
-                Files.writeString(CURRENT_FILE, "en_us");
+                Files.writeString(CURRENT_FILE, Language.DEFAULT);
             } else {
-                String languageKey = SLC.normalizeLang(Files.readString(CURRENT_FILE).trim());
-
-                if (!languageKey.equals("en_us")) {
-                    for (ServerLanguage language : this.availableLanguages) {
-                        if (language.key.equals(languageKey)) {
-                            this.currentLanguage = language;
-                            break;
-                        }
-                    }
-                }
+                this.currentLanguage = SLC.normalizeLang(Files.readString(CURRENT_FILE).trim());
             }
         } catch (IOException e) {
             SLC.LOGGER.error("Failed to load current language from file", e);
         }
     }
 
-    public void inject(ServerLanguage language) {
+    public void inject(String language) {
         this.currentLanguage = language;
 
-        this.writeToFile(language == null ? "en_us" : language.key);
+        this.writeToFile(language);
 
         Language.inject(this.createLanguage());
     }
 
-    public Language createLanguage() {
-        if (this.currentLanguage == null) {
-            Path path = MINECRAFT_CONTAINER.findPath("/assets/minecraft/lang/en_us.json").orElseThrow();
+    public SLCLanguage createLanguage() {
+        List<String> languages = new ArrayList<>();
 
-            try (InputStream stream = Files.newInputStream(path)) {
-                return streamToLanguage(stream);
-            } catch (Exception e) {
-                SLC.LOGGER.error("Failed to load default language", e);
-            }
-        } else {
-            if (Files.notExists(this.currentLanguage.path) || !this.currentLanguage.calculateSHA1().equals(this.currentLanguage.hash)) {
-                this.currentLanguage.download();
-            }
+        languages.add(Language.DEFAULT);
 
-            try (InputStream stream = Files.newInputStream(this.currentLanguage.path)) {
-                return streamToLanguage(stream);
-            } catch (Exception e) {
-                SLC.LOGGER.error("Failed to load server language", e);
-            }
+        if (!this.currentLanguage.equals("en_us")) {
+            languages.add(this.currentLanguage);
         }
-        throw new RuntimeException("Failed to create language");
+
+        Map<String, String> translations = new HashMap<>();
+
+        for (String language : languages) {
+            translations.putAll(this.getTranslations(language));
+        }
+
+        return new SLCLanguage(Map.copyOf(translations));
     }
 
-    public ServerLanguage findLanguage(String lang) {
-        for (ServerLanguage language : this.availableLanguages) {
+    public RemoteLanguageData findRemoteLanguage(String lang) {
+        for (RemoteLanguageData language : this.availableLanguages) {
             if (language.key.equals(lang)) {
                 return language;
             }
@@ -109,7 +88,59 @@ public class LanguageLoader {
         return null;
     }
 
-    public ServerLanguage getCurrentLanguage() {
+    public Map<String, String> getTranslations(String language) {
+        List<Path> paths = new ArrayList<>();
+
+        if (language.equals(Language.DEFAULT)) {
+            paths.add(
+                MINECRAFT_CONTAINER
+                    .findPath("/assets/minecraft/lang/" + Language.DEFAULT + ".json")
+                    .orElseThrow()
+            );
+        } else {
+            RemoteLanguageData remote = this.findRemoteLanguage(language);
+
+            if (remote == null) {
+                throw new RuntimeException();
+            }
+
+            if (Files.notExists(remote.path) || !remote.calculateDownloadedSHA1().equals(remote.hash)) {
+                remote.downloadAndWrite();
+            }
+
+            paths.add(remote.path);
+        }
+
+        for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
+            if (mod.getMetadata().getType().equals("builtin")) continue;
+
+            //noinspection UnstableApiUsage
+            final Map<PackType, Set<String>> map = ModNioPackResources.readNamespaces(mod.getRootPaths(), mod.getMetadata().getId());
+
+            for (String ns : map.get(PackType.CLIENT_RESOURCES)) {
+                mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + language + ".json")
+                    .filter(Files::isRegularFile)
+                    .ifPresent(paths::add);
+            }
+        }
+
+        Map<String, String> translations = new HashMap<>();
+
+        for (Path path : paths) {
+            try (InputStream stream = Files.newInputStream(path)) {
+                Language.loadFromJson(stream, translations::put);
+            } catch (Exception e) {
+                SLC.LOGGER.error("Failed to load from json", e);
+            }
+        }
+
+        DeprecatedTranslationsInfo deprecatedInfo = DeprecatedTranslationsInfo.loadFromDefaultResource();
+        deprecatedInfo.applyToMap(translations);
+
+        return Map.copyOf(translations);
+    }
+
+    public String getCurrentLanguage() {
         return this.currentLanguage;
     }
 
@@ -121,69 +152,7 @@ public class LanguageLoader {
         }
     }
 
-    private static Language streamToLanguage(InputStream stream) {
-        Map<String, String> translations = new HashMap<>();
-
-        Language.loadFromJson(stream, translations::put);
-
-        DeprecatedTranslationsInfo deprecatedInfo = DeprecatedTranslationsInfo.loadFromDefaultResource();
-        deprecatedInfo.applyToMap(translations);
-
-        for (Path path : getModLanguageFiles()) {
-            try (InputStream is = Files.newInputStream(path)) {
-                Language.loadFromJson(is, translations::put);
-            } catch (Exception e) {
-                SLC.LOGGER.error("Failed to load mod translations", e);
-            }
-        }
-
-        Map<String, String> storage = Map.copyOf(translations);
-
-        return new Language() {
-            public @NonNull String getOrDefault(@NonNull String elementId, @NonNull String defaultValue) {
-                return storage.getOrDefault(elementId, defaultValue);
-            }
-
-            public boolean has(@NonNull String elementId) {
-                return storage.containsKey(elementId);
-            }
-
-            public boolean isDefaultRightToLeft() {
-                return false;
-            }
-
-            public @NonNull FormattedCharSequence getVisualOrder(@NonNull FormattedText logicalOrderText) {
-                return (output) -> logicalOrderText.visit((style, contents) -> StringDecomposer.iterateFormatted(contents, style, output) ? Optional.empty() : FormattedText.STOP_ITERATION, Style.EMPTY).isPresent();
-            }
-        };
-    }
-
-    private static Collection<Path> getModLanguageFiles() {
-        Set<Path> paths = new LinkedHashSet<>();
-
-        for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
-            if (mod.getMetadata().getType().equals("builtin")) continue;
-
-            @SuppressWarnings("UnstableApiUsage")
-            Map<PackType, Set<String>> map = ModNioPackResources.readNamespaces(mod.getRootPaths(), mod.getMetadata().getId());
-
-            for (String ns : map.get(PackType.CLIENT_RESOURCES)) {
-                mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + Language.DEFAULT + ".json")
-                    .filter(Files::isRegularFile)
-                    .ifPresent(paths::add);
-
-                if (LanguageLoader.INSTANCE.currentLanguage != null) {
-                    mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + LanguageLoader.INSTANCE.currentLanguage.key + ".json")
-                        .filter(Files::isRegularFile)
-                        .ifPresent(paths::add);
-                }
-            }
-        }
-
-        return Collections.unmodifiableCollection(paths);
-    }
-
-    private static List<ServerLanguage> fetchLanguages() {
+    private static List<RemoteLanguageData> fetchLanguages() {
         String manifestString = fetchString("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
         JsonObject manifest = JsonParser.parseString(manifestString).getAsJsonObject();
 
@@ -214,7 +183,7 @@ public class LanguageLoader {
         JsonObject objects = JsonParser.parseString(assetIndexString).getAsJsonObject()
             .getAsJsonObject("objects");
 
-        List<ServerLanguage> list = new ArrayList<>();
+        List<RemoteLanguageData> list = new ArrayList<>();
 
         for (Map.Entry<String, JsonElement> entry : objects.entrySet()) {
             Matcher matcher = LANGUAGE_REGEX.matcher(entry.getKey());
@@ -226,7 +195,7 @@ public class LanguageLoader {
                     .get("hash")
                     .getAsString();
 
-                list.add(new ServerLanguage(language, hash));
+                list.add(new RemoteLanguageData(language, hash));
             }
         }
 
