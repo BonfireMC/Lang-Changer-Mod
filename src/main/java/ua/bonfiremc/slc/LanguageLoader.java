@@ -3,11 +3,15 @@ package ua.bonfiremc.slc;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.fabricmc.fabric.impl.resource.ServerLanguageUtil;
+import net.fabricmc.fabric.impl.resource.pack.ModNioPackResources;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.locale.DeprecatedTranslationsInfo;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
+import net.minecraft.server.packs.PackType;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.StringDecomposer;
 import org.jspecify.annotations.NonNull;
@@ -26,23 +30,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LanguageLoader {
-    public static final LanguageLoader INSTANCE = new LanguageLoader();
-
     public static final Path DIR = Paths.get("server_languages");
     public static final Path CURRENT_FILE = DIR.resolve("_current.txt");
 
     public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     @SuppressWarnings("OptionalGetWithoutIsPresent")
-    private static final String MINECRAFT_VERSION = FabricLoader.getInstance().getModContainer("minecraft").get()
-        .getMetadata()
-        .getVersion()
-        .getFriendlyString();
-    private static final Pattern LANGUAGE_REGEX = Pattern.compile("^assets/minecraft/lang/([^/]+)\\.json$");
+    private static final ModContainer MINECRAFT_CONTAINER = FabricLoader.getInstance().getModContainer("minecraft").get();
+    private static final Pattern LANGUAGE_REGEX = Pattern.compile("^minecraft/lang/([^/]+)\\.json$");
 
     public final List<ServerLanguage> availableLanguages;
 
     private ServerLanguage currentLanguage = null;
+
+    public static final LanguageLoader INSTANCE = new LanguageLoader();
 
     private LanguageLoader() {
         this.availableLanguages = fetchLanguages();
@@ -78,7 +79,9 @@ public class LanguageLoader {
 
     public Language createLanguage() {
         if (this.currentLanguage == null) {
-            try (InputStream stream = Language.class.getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
+            Path path = MINECRAFT_CONTAINER.findPath("/assets/minecraft/lang/en_us.json").orElseThrow();
+
+            try (InputStream stream = Files.newInputStream(path)) {
                 return streamToLanguage(stream);
             } catch (Exception e) {
                 SLC.LOGGER.error("Failed to load default language", e);
@@ -126,6 +129,14 @@ public class LanguageLoader {
         DeprecatedTranslationsInfo deprecatedInfo = DeprecatedTranslationsInfo.loadFromDefaultResource();
         deprecatedInfo.applyToMap(translations);
 
+        for (Path path : getModLanguageFiles()) {
+            try (InputStream is = Files.newInputStream(path)) {
+                Language.loadFromJson(is, translations::put);
+            } catch (Exception e) {
+                SLC.LOGGER.error("Failed to load mod translations", e);
+            }
+        }
+
         Map<String, String> storage = Map.copyOf(translations);
 
         return new Language() {
@@ -147,21 +158,51 @@ public class LanguageLoader {
         };
     }
 
+    private static Collection<Path> getModLanguageFiles() {
+        Set<Path> paths = new LinkedHashSet<>();
+
+        for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
+            if (mod.getMetadata().getType().equals("builtin")) continue;
+
+            @SuppressWarnings("UnstableApiUsage")
+            Map<PackType, Set<String>> map = ModNioPackResources.readNamespaces(mod.getRootPaths(), mod.getMetadata().getId());
+
+            for (String ns : map.get(PackType.CLIENT_RESOURCES)) {
+                mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + Language.DEFAULT + ".json")
+                    .filter(Files::isRegularFile)
+                    .ifPresent(paths::add);
+
+                if (LanguageLoader.INSTANCE.currentLanguage != null) {
+                    mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + LanguageLoader.INSTANCE.currentLanguage.key + ".json")
+                        .filter(Files::isRegularFile)
+                        .ifPresent(paths::add);
+                }
+            }
+        }
+
+        return Collections.unmodifiableCollection(paths);
+    }
+
     private static List<ServerLanguage> fetchLanguages() {
         String manifestString = fetchString("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
         JsonObject manifest = JsonParser.parseString(manifestString).getAsJsonObject();
 
         String versionDataUrl = null;
 
+        String minecraftVersion = MINECRAFT_CONTAINER
+            .getMetadata()
+            .getVersion()
+            .getFriendlyString();
+
         for (JsonElement el : manifest.getAsJsonArray("versions")) {
             JsonObject version = el.getAsJsonObject();
 
-            if (version.get("id").getAsString().equals(MINECRAFT_VERSION)) {
+            if (version.get("id").getAsString().equals(minecraftVersion)) {
                 versionDataUrl = version.get("url").getAsString();
                 break;
             }
         }
-        if (versionDataUrl == null) throw new RuntimeException(MINECRAFT_VERSION + " version is not found");
+        if (versionDataUrl == null) throw new RuntimeException(minecraftVersion + " version is not found");
 
         String versionDataString = fetchString(versionDataUrl);
         String assetIndexUrl = JsonParser.parseString(versionDataString).getAsJsonObject()

@@ -44,8 +44,9 @@ public class SLC implements ModInitializer {
                     })
                     .executes(context -> {
                         String languageKey = normalizeLang(StringArgumentType.getString(context, "language").toLowerCase());
+                        ServerLanguage currentLanguage = LanguageLoader.INSTANCE.getCurrentLanguage();
 
-                        if (languageKey.equals(LanguageLoader.INSTANCE.getCurrentLanguage().key)) {
+                        if (languageKey.equals(currentLanguage == null ? "en_us" : currentLanguage.key)) {
                             context.getSource().sendFailure(Component.translatable("commands.slc.failed.already_set"));
                             return 0;
                         }

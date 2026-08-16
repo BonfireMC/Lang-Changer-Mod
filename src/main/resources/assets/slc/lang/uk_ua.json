@@ -1,0 +1,6 @@
+{
+    "commands.slc.setting": "Установлення мови «%s»",
+    "commands.slc.failed.unknown": "Невідома мова «%s»",
+    "commands.slc.failed.already_set": "Га? Ти вже використовуєш цю мову, чуваче :|",
+    "commands.slc.failed.exception": "Не вдалося встановити мову. Перегляньте консоль, щоб дізнатися більше"
+}
