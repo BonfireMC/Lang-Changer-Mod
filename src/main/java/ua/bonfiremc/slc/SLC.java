@@ -7,6 +7,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.permissions.Permissions;
 import org.slf4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,7 @@ public class SLC implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, _, _) -> {
             dispatcher.register(literal("slc")
                 .then(argument("language", StringArgumentType.word())
+                    .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_ADMIN))
                     .suggests((_, builder) -> {
                         builder.suggest(Language.DEFAULT);
 
