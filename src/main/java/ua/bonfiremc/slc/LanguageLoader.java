@@ -56,6 +56,7 @@ public class LanguageLoader {
     public void inject(String language) {
         this.currentLanguage = language;
 
+        this.setServerTranslationsAPILangYepIFuckingLoveThoseLongNames();
         Language.inject(this.createLanguage());
 
         this.updateFile();
@@ -142,6 +143,14 @@ public class LanguageLoader {
 
     public String getCurrentLanguage() {
         return this.currentLanguage;
+    }
+
+    public void setServerTranslationsAPILangYepIFuckingLoveThoseLongNames() {
+        if (FabricLoader.getInstance().isModLoaded("server_translations_api")) {
+            xyz.nucleoid.server.translations.impl.ServerTranslations instance = xyz.nucleoid.server.translations.impl.ServerTranslations.INSTANCE;
+
+            instance.setSystemLanguage(instance.getLanguageDefinition(this.currentLanguage));
+        }
     }
 
     private void updateFile() {

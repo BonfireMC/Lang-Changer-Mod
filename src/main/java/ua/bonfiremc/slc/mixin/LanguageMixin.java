@@ -11,6 +11,7 @@ import ua.bonfiremc.slc.LanguageLoader;
 public class LanguageMixin {
     @Inject(method = "loadDefault", at = @At("HEAD"), cancellable = true)
     private static void slc$loadDefault(CallbackInfoReturnable<Language> cir) {
+        LanguageLoader.INSTANCE.setServerTranslationsAPILangYepIFuckingLoveThoseLongNames();
         cir.setReturnValue(LanguageLoader.INSTANCE.createLanguage());
     }
 }
