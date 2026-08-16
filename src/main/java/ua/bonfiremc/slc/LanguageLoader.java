@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.locale.DeprecatedTranslationsInfo;
 import net.minecraft.locale.Language;
 import net.minecraft.server.packs.PackType;
+import xyz.nucleoid.server.translations.impl.ServerTranslations;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -147,7 +148,7 @@ public class LanguageLoader {
 
     public void setServerTranslationsAPILangYepIFuckingLoveThoseLongNames() {
         if (FabricLoader.getInstance().isModLoaded("server_translations_api")) {
-            xyz.nucleoid.server.translations.impl.ServerTranslations instance = xyz.nucleoid.server.translations.impl.ServerTranslations.INSTANCE;
+            ServerTranslations instance = ServerTranslations.INSTANCE;
 
             instance.setSystemLanguage(instance.getLanguageDefinition(this.currentLanguage));
         }

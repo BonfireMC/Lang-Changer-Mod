@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.fabric.api)
 
     implementation(libs.translations)
+    include(libs.translations)
 }
 
 java {
