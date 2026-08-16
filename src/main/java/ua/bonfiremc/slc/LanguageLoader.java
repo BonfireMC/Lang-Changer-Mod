@@ -105,8 +105,8 @@ public class LanguageLoader {
         for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
             if (mod.getMetadata().getType().equals("builtin")) continue;
 
-            //noinspection UnstableApiUsage
-            final Map<PackType, Set<String>> map = ModNioPackResources.readNamespaces(mod.getRootPaths(), mod.getMetadata().getId());
+            @SuppressWarnings("UnstableApiUsage")
+            Map<PackType, Set<String>> map = ModNioPackResources.readNamespaces(mod.getRootPaths(), mod.getMetadata().getId());
 
             for (String ns : map.get(PackType.CLIENT_RESOURCES)) {
                 mod.findPath(PackType.CLIENT_RESOURCES.getDirectory() + "/" + ns + "/lang/" + language + ".json")
