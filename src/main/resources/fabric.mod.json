@@ -7,7 +7,11 @@
     "authors": [
         "Bonfire Studios"
     ],
-    "contact": {},
+    "contact": {
+        "homepage": "https://modrinth.com/mod/slc",
+        "sources": "https://github.com/BonfireMC/Server-Language-Changer",
+        "issues": "https://github.com/BonfireMC/Server-Language-Changer/issues"
+    },
     "license": "LGPL-3.0",
     "icon": "assets/slc/icon.png",
     "environment": "server",
